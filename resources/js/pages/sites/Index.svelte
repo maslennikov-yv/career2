@@ -25,9 +25,9 @@
         CardHeader,
         CardTitle,
     } from '@/components/ui/card';
+    import type { Site } from '@/types';
     import { toUrl } from '@/lib/utils';
     import sites from '@/routes/sites';
-    import type { Site } from '@/types';
 
     let { sites: list }: { sites: Site[] } = $props();
 

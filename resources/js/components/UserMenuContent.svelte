@@ -7,8 +7,8 @@
         DropdownMenuSeparator,
     } from '@/components/ui/dropdown-menu';
     import UserInfo from '@/components/UserInfo.svelte';
-    import { logout } from '@/routes';
     import type { User } from '@/types';
+    import { logout } from '@/routes';
 
     let {
         user,

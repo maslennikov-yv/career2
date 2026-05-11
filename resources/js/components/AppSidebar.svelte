@@ -9,9 +9,9 @@
         SidebarContent,
         SidebarFooter,
     } from '@/components/ui/sidebar';
+    import type { NavItem } from '@/types';
     import { home } from '@/routes';
     import sitesRoutes from '@/routes/sites';
-    import type { NavItem } from '@/types';
 
     let {
         children,

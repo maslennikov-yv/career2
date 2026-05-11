@@ -1,5 +1,6 @@
 <script lang="ts">
     import { Form } from '@inertiajs/svelte';
+    import type { Site } from '@/types';
     import SiteController from '@/actions/App/Http/Controllers/SiteController';
     import InputError from '@/components/InputError.svelte';
     import { Button } from '@/components/ui/button';
@@ -13,7 +14,6 @@
     import { Input } from '@/components/ui/input';
     import { Label } from '@/components/ui/label';
     import { Spinner } from '@/components/ui/spinner';
-    import type { Site } from '@/types';
 
     let {
         site,

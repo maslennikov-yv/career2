@@ -1,5 +1,5 @@
-import StatsController from '@/actions/App/Http/Controllers/StatsController';
 import type { CityPoint, HourlyPoint } from '@/types';
+import StatsController from '@/actions/App/Http/Controllers/StatsController';
 
 type SiteStatsState = {
     hourly: HourlyPoint[];

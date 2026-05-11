@@ -6,9 +6,9 @@
     import { Skeleton } from '@/components/ui/skeleton';
     import { pluralizeRu } from '@/lib/pluralize';
     import { toUrl } from '@/lib/utils';
+    import type { Joke, JokesPagination } from '@/types/joke';
     import { login, register } from '@/routes';
     import sitesRoutes from '@/routes/sites';
-    import type { Joke, JokesPagination } from '@/types/joke';
 
     let {
         canRegister = true,
