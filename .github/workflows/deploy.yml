@@ -1,0 +1,50 @@
+name: deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      env:
+        description: Target environment
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+
+# Требуемые GitHub Secrets:
+#   DEPLOY_SSH_KEY    — private SSH key для доступа к серверу
+#   DEPLOY_HOST       — hostname или IP сервера microk8s
+#   DEPLOY_USER       — SSH user (ubuntu, deploy и т.п.)
+#   DEPLOY_INFRA_PATH — абсолютный путь к infra-репозиторию на сервере
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.env || 'prod' }}
+    concurrency:
+      group: deploy-${{ github.event.inputs.env || 'prod' }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Deploy via SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_ENV: ${{ github.event.inputs.env || 'prod' }}
+        run: |
+          echo "$SSH_KEY" > /tmp/deploy_key
+          chmod 600 /tmp/deploy_key
+          trap 'rm -f /tmp/deploy_key' EXIT
+          ssh -i /tmp/deploy_key \
+            -o StrictHostKeyChecking=no \
+            -o BatchMode=yes \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "set -e
+             cd ${{ secrets.DEPLOY_INFRA_PATH }}/apps/src/career2
+             git fetch origin
+             git checkout main
+             git reset --hard origin/main
+             cd ${{ secrets.DEPLOY_INFRA_PATH }}
+             make app-deploy APP=career2 ENV=${DEPLOY_ENV}"

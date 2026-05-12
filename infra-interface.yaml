@@ -1,0 +1,9 @@
+version: 1
+implements:
+  - deploy
+  - rollback
+  - status
+  - logs
+  - migrate
+  - seed
+  - shell

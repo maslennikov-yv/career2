@@ -1,0 +1,68 @@
+# Infra-interface для career2 (Laravel 13 + Svelte 5).
+# Включается: include Makefile.infra
+# Вызов: make -C apps/src/career2 infra-<method> ENV=... KUBECONFIG=... APP=... APP_NS=... APPS_REGISTRY=...
+
+APP      ?= career2
+APP_NS   ?= $(APP)
+RELEASE  := $(APP)
+CHART    := deploy/helm
+REGISTRY ?= localhost:32000
+
+IMAGE_TAG ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "latest")
+IMAGE     := $(REGISTRY)/$(RELEASE):$(IMAGE_TAG)
+
+HELM_FLAGS := --kubeconfig $(KUBECONFIG) \
+              -n $(APP_NS) --create-namespace \
+              -f $(CHART)/values-$(ENV).yaml \
+              $(if $(wildcard $(CHART)/values-$(ENV).local.yaml),-f $(CHART)/values-$(ENV).local.yaml)
+
+IMAGES_DIR ?= .
+
+.PHONY: infra-deploy infra-rollback infra-status infra-logs infra-migrate infra-seed infra-shell \
+	infra-image-build infra-image-save
+
+print-IMAGE:
+	@echo $(IMAGE)
+
+print-IMAGE_TAG:
+	@echo $(IMAGE_TAG)
+
+infra-image-build:
+	docker build -t $(IMAGE) .
+
+infra-image-save:
+	mkdir -p $(IMAGES_DIR)
+	docker save $(IMAGE) -o $(IMAGES_DIR)/$(APP)-$(IMAGE_TAG).tar
+
+infra-deploy:
+	helm upgrade --install $(RELEASE) $(CHART) $(HELM_FLAGS) \
+	  --set image.repository=$(REGISTRY)/$(RELEASE) \
+	  --set image.tag=$(IMAGE_TAG) \
+	  --wait --timeout=5m
+
+infra-rollback:
+	helm rollback $(RELEASE) $(REVISION) --kubeconfig $(KUBECONFIG) -n $(APP_NS)
+
+infra-status:
+	helm status $(RELEASE) --kubeconfig $(KUBECONFIG) -n $(APP_NS)
+	kubectl get pods,svc,ingress -n $(APP_NS) -l app.kubernetes.io/instance=$(RELEASE) --kubeconfig $(KUBECONFIG)
+
+infra-logs:
+	kubectl logs -n $(APP_NS) \
+	  -l "app.kubernetes.io/instance=$(RELEASE),app.kubernetes.io/component=web" \
+	  $(if $(CONTAINER),--container $(CONTAINER)) \
+	  $(if $(filter 1,$(FOLLOW)),-f --tail=100,--tail=200) \
+	  --kubeconfig $(KUBECONFIG)
+
+infra-migrate:
+	kubectl exec -n $(APP_NS) --kubeconfig $(KUBECONFIG) \
+	  deploy/$(RELEASE) -- php artisan migrate --force --no-interaction
+
+infra-seed:
+	kubectl exec -n $(APP_NS) --kubeconfig $(KUBECONFIG) \
+	  deploy/$(RELEASE) -- php artisan db:seed --force
+
+infra-shell:
+	kubectl exec -it -n $(APP_NS) --kubeconfig $(KUBECONFIG) \
+	  $(if $(CONTAINER),--container $(CONTAINER)) \
+	  deploy/$(RELEASE) -- bash

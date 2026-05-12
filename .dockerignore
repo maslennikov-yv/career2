@@ -1,0 +1,13 @@
+.git
+.github
+.claude
+node_modules
+vendor
+storage/*.key
+public/hot
+public/storage
+*.log
+.env
+.env.*
+deploy/helm
+apps/

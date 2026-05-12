@@ -1,0 +1,6 @@
+apiVersion: v2
+name: career2
+description: Career2 — Laravel 13 + Svelte 5 application
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
