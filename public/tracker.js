@@ -7,11 +7,12 @@
     'use strict';
 
     if (window.__statlite_initialized) return;
+    window.__statlite_initialized = true;
 
     var script = document.currentScript || (function () {
         var all = document.getElementsByTagName('script');
         for (var i = all.length - 1; i >= 0; i--) {
-            if (all[i].src && all[i].src.indexOf('tracker.js') !== -1) return all[i];
+            if (all[i].getAttribute('data-site-id') && all[i].getAttribute('data-endpoint')) return all[i];
         }
         return null;
     })();
@@ -21,28 +22,31 @@
     var endpoint = script.getAttribute('data-endpoint');
     if (!siteId || !endpoint) return;
 
-    window.__statlite_initialized = true;
-
     var STORAGE_KEY = '__statlite_uid';
     var visitorUid = null;
     try {
         visitorUid = localStorage.getItem(STORAGE_KEY);
         if (!visitorUid) {
             visitorUid = generateUuid();
-            localStorage.setItem(STORAGE_KEY, visitorUid);
+            if (visitorUid) localStorage.setItem(STORAGE_KEY, visitorUid);
         }
     } catch (_) {
         visitorUid = null;
     }
 
-    var payload = {
+    send(endpoint, {
         public_id: siteId,
         visitor_uid: visitorUid,
-        page_url: location.href,
+        page_url: window.location.href,
         referrer: document.referrer || null,
-    };
+    });
 
-    send(endpoint, payload);
+    function generateUuid() {
+        if (window.crypto && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID();
+        }
+        return null;
+    }
 
     function send(url, body) {
         var data = JSON.stringify(body);
@@ -57,23 +61,12 @@
         try {
             fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                headers: { 'Content-Type': 'application/json' },
                 body: data,
                 keepalive: true,
                 mode: 'cors',
                 credentials: 'omit',
             });
         } catch (_) {}
-    }
-
-    function generateUuid() {
-        if (window.crypto && typeof crypto.randomUUID === 'function') {
-            return crypto.randomUUID();
-        }
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-            var r = (Math.random() * 16) | 0;
-            var v = c === 'x' ? r : (r & 0x3) | 0x8;
-            return v.toString(16);
-        });
     }
 })();
