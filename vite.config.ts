@@ -22,6 +22,9 @@ export default defineConfig({
         svelte(),
         wayfinder({
             formVariants: true,
+            // В Docker-сборке PHP недоступен в Node-стейдже; wayfinder-файлы
+            // генерируются в отдельном PHP-стейдже и копируются перед build.
+            command: process.env.WAYFINDER_COMMAND ?? 'php artisan wayfinder:generate',
         }),
     ],
 });
