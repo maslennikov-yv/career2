@@ -14,13 +14,18 @@
         canRegister = true,
         jokes,
         latest,
-        selfCounter,
     }: {
         canRegister: boolean;
         jokes: JokesPagination;
         latest?: Joke[];
-        selfCounter: { visits: number; uniques: number };
     } = $props();
+
+    let counter = $state<{ visits: number; uniques: number } | null>(null);
+
+    async function fetchCounter() {
+        const res = await fetch('/api/counter');
+        if (res.ok) counter = await res.json();
+    }
 
     const auth = $derived(page.props.auth);
 
@@ -43,13 +48,16 @@
 
     $effect(() =>
         untrack(() => {
+            fetchCounter();
+
             function reloadIfVisible() {
                 if (document.visibilityState !== 'visible') {
                     return;
                 }
 
+                fetchCounter();
                 router.reload({
-                    only: ['latest', 'selfCounter'],
+                    only: ['latest'],
                     data: { after: newestId },
                 });
             }
@@ -95,23 +103,25 @@
         >
             <div class="flex items-baseline gap-3">
                 <h1 class="text-base font-semibold">Шутки</h1>
-                <span
-                    class="text-xs text-muted-foreground tabular-nums"
-                    aria-label="Счётчик посещений сайта"
-                >
-                    {numberFmt.format(selfCounter.visits)}
-                    {pluralizeRu(selfCounter.visits, [
-                        'визит',
-                        'визита',
-                        'визитов',
-                    ])} ·
-                    {numberFmt.format(selfCounter.uniques)}
-                    {pluralizeRu(selfCounter.uniques, [
-                        'посетитель',
-                        'посетителя',
-                        'посетителей',
-                    ])}
-                </span>
+                {#if counter}
+                    <span
+                        class="text-xs text-muted-foreground tabular-nums"
+                        aria-label="Счётчик посещений сайта"
+                    >
+                        {numberFmt.format(counter.visits)}
+                        {pluralizeRu(counter.visits, [
+                            'визит',
+                            'визита',
+                            'визитов',
+                        ])} ·
+                        {numberFmt.format(counter.uniques)}
+                        {pluralizeRu(counter.uniques, [
+                            'посетитель',
+                            'посетителя',
+                            'посетителей',
+                        ])}
+                    </span>
+                {/if}
             </div>
             <div class="flex items-center gap-2 text-sm">
                 {#if auth.user}

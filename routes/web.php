@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\CounterController;
 use App\Http\Controllers\Api\JokesController as ApiJokesController;
 use App\Http\Controllers\Api\TrackController;
 use App\Http\Controllers\JokesController;
@@ -12,6 +13,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [JokesController::class, 'index'])->name('home');
 
 Route::get('api/jokes', [ApiJokesController::class, 'index'])->name('api.jokes.index');
+
+Route::get('api/counter', [CounterController::class, 'show'])
+    ->middleware('throttle:60,1')
+    ->name('api.counter.show');
 
 Route::post('api/track', [TrackController::class, 'store'])
     ->middleware('throttle:track')

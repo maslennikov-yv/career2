@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Contracts\Actions\Jokes\ListsJokes;
-use App\Contracts\Actions\Stats\GetsSelfCounters;
 use App\Data\Jokes\ListJokesData;
-use App\Data\Stats\GetSelfCountersData;
 use App\Http\Resources\JokeResource;
 use App\Models\Joke;
 use Illuminate\Http\Request;
@@ -17,13 +15,10 @@ use Laravel\Fortify\Features;
 
 class JokesController extends Controller
 {
-    public function index(Request $request, ListsJokes $list, GetsSelfCounters $counters): Response
+    public function index(Request $request, ListsJokes $list): Response
     {
-        $publicId = (string) config('stats.self_site_public_id');
-
         return Inertia::render('Welcome', [
             'canRegister' => Features::enabled(Features::registration()),
-            'selfCounter' => fn () => $counters(new GetSelfCountersData(public_id: $publicId)),
             'jokes' => Inertia::scroll(fn () => $list(ListJokesData::from([
                 'cursor' => $request->query('cursor'),
                 'per_page' => 10,
