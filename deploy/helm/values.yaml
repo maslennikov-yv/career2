@@ -1,0 +1,76 @@
+image:
+  repository: localhost:32000/career2
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+app:
+  # Обязательно: задать в values-<ENV>.local.yaml
+  # Сгенерировать: php artisan key:generate --show
+  key: ""
+  url: "http://localhost"
+  env: production
+  debug: "false"
+  logChannel: stderr
+  logLevel: error
+  trustedProxies: ""
+  statsPublicId: "selfsite00000001"
+  systemUserEmail: "system@localhost"
+  # Задать в values-<ENV>.local.yaml (обязательно перед первым db:seed)
+  systemUserPassword: ""
+  mail:
+    mailer: log
+    host: "127.0.0.1"
+    port: "2525"
+    fromAddress: "hello@example.com"
+    fromName: "Career2"
+
+# Секреты, созданные infra (make pg-app-create / make redis-app-create)
+postgres:
+  secretName: career2-postgres
+
+redis:
+  secretName: career2-redis
+
+queue:
+  enabled: true
+  replicaCount: 1
+  tries: 3
+  timeout: 60
+  memory: 128
+  sleep: 3
+
+scheduler:
+  enabled: true
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  host: ""
+  annotations: {}
+  tls: false
+  tlsSecretName: ""
+
+resources:
+  web:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  worker:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+  scheduler:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi

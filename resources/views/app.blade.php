@@ -11,6 +11,10 @@
         @fonts
 
         @vite(['resources/css/app.css', 'resources/js/app.ts'])
+        @php $trackerId = config('stats.self_site_public_id'); @endphp
+        @if($trackerId)
+        <script async src="/tracker.js" data-site-id="{{ $trackerId }}" data-endpoint="/api/track"></script>
+        @endif
         <x-inertia::head>
             <title>{{ config('app.name', 'Laravel') }}</title>
         </x-inertia::head>

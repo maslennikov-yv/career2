@@ -12,11 +12,17 @@ class SystemSiteSeeder extends Seeder
 {
     public function run(): void
     {
+        $password = config('stats.system_user_password');
+
+        if (! is_string($password) || $password === '') {
+            throw new \RuntimeException('STATS_SYSTEM_USER_PASSWORD is not set');
+        }
+
         $owner = User::firstOrCreate(
-            ['email' => 'test@example.com'],
+            ['email' => (string) config('stats.system_user_email')],
             [
-                'name' => 'Test User',
-                'password' => 'test',
+                'name' => 'System',
+                'password' => $password,
                 'email_verified_at' => now(),
             ],
         );

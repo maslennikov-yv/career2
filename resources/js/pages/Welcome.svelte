@@ -19,7 +19,7 @@
         canRegister: boolean;
         jokes: JokesPagination;
         latest?: Joke[];
-        selfCounter: { public_id: string; visits: number; uniques: number };
+        selfCounter: { visits: number; uniques: number };
     } = $props();
 
     const auth = $derived(page.props.auth);
@@ -86,14 +86,7 @@
     });
 </script>
 
-<AppHead title="Шутки">
-    <script
-        async
-        src="/tracker.js"
-        data-site-id={selfCounter.public_id}
-        data-endpoint="/api/track"
-    ></script>
-</AppHead>
+<AppHead title="Шутки" />
 
 <div class="min-h-screen bg-background text-foreground">
     <header class="border-b border-border/60">

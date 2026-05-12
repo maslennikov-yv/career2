@@ -12,7 +12,7 @@ use Illuminate\Container\Attributes\Bind;
 interface GetsSelfCounters
 {
     /**
-     * @return array{public_id: string, visits: int, uniques: int}
+     * @return array{visits: int, uniques: int}
      */
     public function __invoke(GetSelfCountersData $data): array;
 }

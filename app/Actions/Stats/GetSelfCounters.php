@@ -24,11 +24,7 @@ class GetSelfCounters implements GetsSelfCounters
                 $site = Site::query()->where('public_id', $data->public_id)->first();
 
                 if ($site === null) {
-                    return [
-                        'public_id' => $data->public_id,
-                        'visits' => 0,
-                        'uniques' => 0,
-                    ];
+                    return ['visits' => 0, 'uniques' => 0];
                 }
 
                 $row = Visit::query()
@@ -38,7 +34,6 @@ class GetSelfCounters implements GetsSelfCounters
                     ->first();
 
                 return [
-                    'public_id' => $site->public_id,
                     'visits' => (int) $row->visits,
                     'uniques' => (int) $row->uniques,
                 ];
