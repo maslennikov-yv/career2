@@ -8,8 +8,9 @@
 
 - **Docker** (Docker Desktop / Docker Engine + `docker compose`) — Tower поднимает контейнеры через Sail.
 - **Node.js 20+** и **npm** — Tower написан на Node и использует ESM.
-- **PHP 8.3+** и **Composer** — нужны один раз, чтобы установить пакеты Composer (включая `vendor/bin/sail`). Дальнейшие команды Tower запускает уже внутри контейнера.
 - **Git** — для клонирования репозитория.
+
+> Composer запускается одноразово в docker-образе `composer:2` — отдельная установка PHP/Composer на хосте не требуется. Tower сам предложит выполнить `composer install` при первом запуске, если `vendor/` ещё не установлен.
 
 > На Windows используйте WSL2 — Sail рассчитан на Linux-окружение.
 
@@ -20,15 +21,14 @@
 git clone <repository-url>
 cd career2
 
-# 2. Зависимости (один раз)
-composer install
+# 2. Зависимости Node для Tower (один раз)
 npm install
 
 # 3. Запуск Tower
 npm run tower
 ```
 
-В открывшемся меню выберите **🚀 Старт проекта** — Tower сам:
+При первом запуске Tower обнаружит отсутствие `vendor/` и спросит, выполнить ли `composer install` через docker-образ `composer:2` — нажмите **Y**. Дальше в открывшемся меню выберите **🚀 Старт проекта** — Tower сам:
 
 1. Скопирует `.env.example` → `.env` (или предложит перезаписать существующий).
 2. Поднимет контейнеры (`laravel.test`, `pgsql`, `redis`, `mailpit`) и дождётся готовности БД.
@@ -43,15 +43,15 @@ npm run tower
 
 Главное меню показывает текущий статус контейнеров (● запущено / ○ остановлено) и предлагает разделы:
 
-| Раздел | Что внутри |
-| --- | --- |
-| 🚀 **Старт проекта** | Первичная настройка (см. выше). |
-| 🐳 **Окружение** | `sail up -d`, `down`, `restart`, `ps`, логи отдельного сервиса, ссылки. |
-| 🛠 **Разработка** | `composer dev` (serve+queue+pail+vite), отдельные `vite`, `serve`, `pail`, `queue:listen`, шелл в контейнере. |
-| 🗄 **База данных** | `migrate`, `migrate:rollback`, `migrate:fresh`, `migrate:fresh --seed`, `db:seed`, `psql`, `artisan tinker`. |
+| Раздел                  | Что внутри                                                                                                                          |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 🚀 **Старт проекта**    | Первичная настройка (см. выше).                                                                                                     |
+| 🐳 **Окружение**        | `sail up -d`, `down`, `restart`, `ps`, логи отдельного сервиса, ссылки.                                                             |
+| 🛠 **Разработка**       | `composer dev` (serve+queue+pail+vite), отдельные `vite`, `serve`, `pail`, `queue:listen`, шелл в контейнере.                       |
+| 🗄 **База данных**      | `migrate`, `migrate:rollback`, `migrate:fresh`, `migrate:fresh --seed`, `db:seed`, `psql`, `artisan tinker`.                        |
 | ✅ **Качество и тесты** | `composer ci:check` (полный CI), Pest (все/по фильтру/один файл/`--coverage`/`--parallel`), Pint, ESLint, Prettier, `svelte-check`. |
-| 🧹 **Обслуживание** | `composer install` / `npm install`, обновления, очистка кешей (`optimize:clear`, `config:clear` и т.д.), сборка ассетов. |
-| 🚪 **Выход** | Закрыть Tower. |
+| 🧹 **Обслуживание**     | `composer install` / `npm install`, обновления, очистка кешей (`optimize:clear`, `config:clear` и т.д.), сборка ассетов.            |
+| 🚪 **Выход**            | Закрыть Tower.                                                                                                                      |
 
 Для выхода из подменю выбирайте «← Назад» или нажимайте `Ctrl+C` (во время длительных операций `Ctrl+C` останавливает только команду, не закрывая Tower).
 
@@ -73,7 +73,7 @@ npm run tower
 
 ```bash
 cp .env.example .env
-composer install
+docker run --rm -v "$(pwd):/app" -u "$(id -u):$(id -g)" -w /app composer:2 install
 ./vendor/bin/sail up -d
 ./vendor/bin/sail artisan key:generate
 ./vendor/bin/sail artisan migrate --seed
@@ -88,12 +88,14 @@ composer install
 ### Как работает
 
 1. Авторизованный пользователь создаёт сайт на `/sites` и получает сниппет вида:
-   ```html
-   <script async
-       src="https://stats.example.com/tracker.js"
-       data-site-id="<public_id>"
-       data-endpoint="https://stats.example.com/api/track"></script>
-   ```
+    ```html
+    <script
+        async
+        src="https://stats.example.com/tracker.js"
+        data-site-id="<public_id>"
+        data-endpoint="https://stats.example.com/api/track"
+    ></script>
+    ```
 2. Скрипт `public/tracker.js` собирает `visitor_uid` (UUID, хранится в `localStorage`), URL страницы и referrer и отправляет POST на `/api/track`.
 3. На сервере `App\Actions\Tracking\RecordVisit` сохраняет `Visit` (IP, UA, device/browser/OS через `jenssegers/agent`) и ставит в очередь `ResolveVisitGeoJob` для геолокации через `ip-api.com`.
 4. На странице `/sites/{site}/stats` рендерятся два графика LayerChart: горизонтальная гистограмма уникальных посещений по часам и круговая диаграмма по городам.
@@ -166,7 +168,7 @@ sudo supervisorctl reread && sudo supervisorctl update && sudo supervisorctl sta
 ## Решение типовых проблем
 
 - **«Docker daemon недоступен»** — запустите Docker Desktop / `systemctl start docker` и повторите.
-- **«Не найден ./vendor/bin/sail»** — выполните `composer install` на хосте.
+- **«Не найден ./vendor/bin/sail»** — выполните `docker run --rm -v "$(pwd):/app" -u "$(id -u):$(id -g)" -w /app composer:2 install` (или просто перезапустите `npm run tower` — он предложит то же самое).
 - **Порт занят** — смените `APP_PORT` или `FORWARD_*_PORT` в `.env`, затем `down` → `up -d`.
 - **БД «не дождались»** — Tower продолжит работу, но миграции могут упасть. Подождите 10–20 секунд и повторите шаг.
 - **Ошибки прав на `storage/` или `bootstrap/cache/`** — `./vendor/bin/sail shell` → `chown -R sail:sail storage bootstrap/cache`.

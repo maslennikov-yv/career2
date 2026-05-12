@@ -51,6 +51,34 @@ async function dockerAlive() {
     return r.exitCode === 0;
 }
 
+async function composerInstallViaDocker() {
+    const args = ['run', '--rm', '-v', `${process.cwd()}:/app`, '-w', '/app'];
+
+    if (process.platform !== 'win32') {
+        args.push('-u', `${process.getuid()}:${process.getgid()}`);
+    }
+
+    args.push('composer:2', 'install');
+
+    const s = p.spinner();
+    s.start('composer install (через docker-образ composer:2)');
+    const r = await execa('docker', args, { reject: false, stdio: 'pipe' });
+
+    if (r.exitCode === 0) {
+        s.stop(pc.green('✓ ') + 'composer install');
+    } else {
+        s.stop(pc.red('✗ ') + 'composer install', r.exitCode);
+
+        if (r.stderr) {
+            p.log.error(r.stderr.trim().split('\n').slice(-10).join('\n'));
+        } else if (r.stdout) {
+            p.log.error(r.stdout.trim().split('\n').slice(-10).join('\n'));
+        }
+    }
+
+    return r.exitCode === 0;
+}
+
 async function listRunningServices() {
     const r = await execa(
         'docker-compose',
@@ -838,14 +866,33 @@ function showLinks() {
 // ─── Главное меню ──────────────────────────────────────────────────────
 
 async function main() {
-    if (!existsSync(SAIL)) {
-        console.error(
-            pc.red(`Не найден ${SAIL}. Сначала выполните composer install.`),
-        );
-        process.exit(1);
-    }
-
     p.intro(pc.bgCyan(pc.black(' 🗼 Tower ')) + pc.dim(`  проект: ${PROJECT}`));
+
+    if (!existsSync(SAIL)) {
+        p.log.warn('vendor/ ещё не установлен — Sail недоступен.');
+
+        if (!(await dockerAlive())) {
+            p.log.error(
+                'Docker daemon недоступен. Запустите Docker и повторите.',
+            );
+            process.exit(1);
+        }
+
+        const ok = await p.confirm({
+            message:
+                'Выполнить composer install через docker-образ composer:2?',
+            initialValue: true,
+        });
+
+        if (p.isCancel(ok) || !ok) {
+            p.log.error('Без vendor/bin/sail продолжать нельзя.');
+            process.exit(1);
+        }
+
+        if (!(await composerInstallViaDocker())) {
+            process.exit(1);
+        }
+    }
 
     while (true) {
         const up = await isUp().catch(() => false);
