@@ -8,7 +8,13 @@
 
     if (window.__statlite_initialized) return;
 
-    var script = document.currentScript;
+    var script = document.currentScript || (function () {
+        var all = document.getElementsByTagName('script');
+        for (var i = all.length - 1; i >= 0; i--) {
+            if (all[i].src && all[i].src.indexOf('tracker.js') !== -1) return all[i];
+        }
+        return null;
+    })();
     if (!script) return;
 
     var siteId = script.getAttribute('data-site-id');
