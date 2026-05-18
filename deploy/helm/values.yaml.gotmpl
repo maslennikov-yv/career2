@@ -1,0 +1,48 @@
+{{/*
+  values.yaml.gotmpl — env-overrides поверх deploy/helm/values.yaml.
+  Рендерится infra перед helm upgrade (см. Makefile.infra → infra-render-values).
+  Контракт: docs/runbooks/app-interface.md (v2).
+
+  Datasources:
+    base — env-specific параметры приложения ($(CHART)/values-<ENV>.base.yaml; в git career2):
+           replicaCount, app.{env,debug,logChannel,logLevel,url,trustedProxies,systemUserEmail},
+           queue, ingress, resources.
+    sec  — секреты от infra (apps/conf/career2/<ENV>/secrets.yaml; передаётся как APP_SECRETS):
+           app.{key,systemUserPassword}, postgres.*, redis.*, и т.п.
+
+  Соглашение: всё env-specific ложится в values-<ENV>.base.yaml внутри репо career2.
+  Секретные значения (app.key, app.systemUserPassword) приходят отдельно через APP_SECRETS.
+*/ -}}
+{{- $base := ds "base" -}}
+{{- $sec := ds "sec" -}}
+replicaCount: {{ $base.replicaCount | default 1 }}
+
+app:
+  env: {{ $base.app.env | quote }}
+  debug: {{ $base.app.debug | quote }}
+  logChannel: {{ $base.app.logChannel | quote }}
+  logLevel: {{ $base.app.logLevel | quote }}
+  trustedProxies: {{ $base.app.trustedProxies | default "" | quote }}
+  url: {{ $base.app.url | quote }}
+{{- if has $base.app "systemUserEmail" }}
+  systemUserEmail: {{ $base.app.systemUserEmail | quote }}
+{{- end }}
+{{- if has $sec.app "key" }}
+  key: {{ $sec.app.key | quote }}
+{{- end }}
+{{- if has $sec.app "systemUserPassword" }}
+  systemUserPassword: {{ $sec.app.systemUserPassword | quote }}
+{{- end }}
+
+queue:
+  replicaCount: {{ $base.queue.replicaCount | default 1 }}
+
+{{- with $base.ingress }}
+ingress:
+{{ . | data.ToYAML | indent 2 }}
+{{- end }}
+
+{{- if $base.resources }}
+resources:
+{{ $base.resources | data.ToYAML | indent 2 }}
+{{- end }}

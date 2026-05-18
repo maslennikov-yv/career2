@@ -1,3 +1,6 @@
+# Не-секретные env-specific параметры career2 (local).
+# Подаётся в values.yaml.gotmpl через gomplate -d base=...
+# Сюда переехало содержимое apps/conf/career2/local/app.yaml (контракт infra-interface v2).
 replicaCount: 1
 
 app:
@@ -5,6 +8,7 @@ app:
   debug: "true"
   logChannel: stack
   logLevel: debug
+  trustedProxies: ""
   url: "http://career2.local"
 
 queue:
@@ -13,6 +17,7 @@ queue:
 ingress:
   enabled: true
   host: career2.local
+  annotations: {}
 
 resources:
   web:

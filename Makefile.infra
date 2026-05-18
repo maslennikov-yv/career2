@@ -1,6 +1,7 @@
-# Infra-interface для career2 (Laravel 13 + Svelte 5).
+# Infra-interface v2 для career2 (Laravel 13 + Svelte 5).
 # Включается: include Makefile.infra
-# Вызов: make -C apps/src/career2 infra-<method> ENV=... KUBECONFIG=... APP=... APP_NS=... APPS_REGISTRY=...
+# Вызов: make -C apps/src/career2 infra-<method> ENV=... KUBECONFIG=... APP=... APP_NS=... APP_SECRETS=... VALUES_OUT=...
+# Контракт: docs/runbooks/app-interface.md (v2).
 
 APP      ?= career2
 APP_NS   ?= $(APP)
@@ -11,15 +12,24 @@ REGISTRY ?= localhost:32000
 IMAGE_TAG ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "latest")
 IMAGE     := $(REGISTRY)/$(RELEASE):$(IMAGE_TAG)
 
+GOMPLATE ?= gomplate
+
+# Куда писать отрендеренный values-<ENV>.yaml. Если infra не задала VALUES_OUT —
+# используем дефолт внутри чарта (gitignored).
+VALUES_OUT ?= $(CHART)/values-$(ENV).yaml
+
+# Env-specific параметры (replicas/ingress/resources/log level и т.п.) живут в репозитории
+# приложения, а не в infra. Файл в git: deploy/helm/values-<ENV>.base.yaml.
+BASE_VALUES := $(CHART)/values-$(ENV).base.yaml
+
 HELM_FLAGS := --kubeconfig $(KUBECONFIG) \
               -n $(APP_NS) --create-namespace \
-              -f $(CHART)/values-$(ENV).yaml \
-              $(if $(wildcard $(CHART)/values-$(ENV).local.yaml),-f $(CHART)/values-$(ENV).local.yaml)
+              -f $(VALUES_OUT)
 
 IMAGES_DIR ?= .
 
-.PHONY: infra-deploy infra-rollback infra-status infra-logs infra-migrate infra-seed infra-shell \
-	infra-image-build infra-image-save
+.PHONY: infra-render-values infra-deploy infra-rollback infra-status infra-logs infra-migrate infra-seed infra-shell \
+	infra-image-build infra-image-save infra-values-print
 
 print-IMAGE:
 	@echo $(IMAGE)
@@ -34,7 +44,26 @@ infra-image-save:
 	mkdir -p $(IMAGES_DIR)
 	docker save $(IMAGE) -o $(IMAGES_DIR)/$(APP)-$(IMAGE_TAG).tar
 
+# Рендер $(VALUES_OUT) из values.yaml.gotmpl с двумя datasource:
+#   sec  — секреты из infra (apps/conf/<APP>/<ENV>/secrets.yaml; передаётся как APP_SECRETS)
+#   base — env-specific параметры приложения ($(CHART)/values-<ENV>.base.yaml; в git career2)
+# Без файловых prerequisites: имена зависят от ENV, и make -n при пустом ENV не должен падать
+# (используется в app-capabilities для проверки наличия цели). Проверки — внутри рецепта.
+infra-render-values:
+	@test -n "$(ENV)" || (echo '✗ ENV не задан' >&2; exit 1)
+	@test -n "$(APP_SECRETS)" || (echo '✗ APP_SECRETS не задан (запускайте через make app-render-values ... из infra)' >&2; exit 1)
+	@test -f "$(APP_SECRETS)" || (echo "✗ APP_SECRETS не найден: $(APP_SECRETS)" >&2; exit 1)
+	@test -f "$(BASE_VALUES)" || (echo "✗ $(BASE_VALUES) не найден — создайте env-specific base values для ENV=$(ENV)" >&2; exit 1)
+	@command -v $(GOMPLATE) >/dev/null 2>&1 || [ -x "$(GOMPLATE)" ] || (echo '✗ gomplate не найден ($(GOMPLATE)) — make tools-check' >&2; exit 1)
+	@mkdir -p "$(dir $(VALUES_OUT))"
+	@$(GOMPLATE) -f "$(CHART)/values.yaml.gotmpl" -d sec="$(APP_SECRETS)" -d base="$(BASE_VALUES)" -o "$(VALUES_OUT)"
+	@echo "✓ values-$(ENV).yaml → $(VALUES_OUT)"
+
+infra-values-print: infra-render-values
+	@cat "$(VALUES_OUT)"
+
 infra-deploy:
+	@test -f "$(VALUES_OUT)" || (echo "✗ $(VALUES_OUT) не найден — вызывайте через 'make app-deploy' из infra или сначала 'make app-render-values'" >&2; exit 1)
 	helm upgrade --install $(RELEASE) $(CHART) $(HELM_FLAGS) \
 	  --set image.repository=$(REGISTRY)/$(RELEASE) \
 	  --set image.tag=$(IMAGE_TAG) \

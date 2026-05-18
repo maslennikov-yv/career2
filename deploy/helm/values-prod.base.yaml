@@ -1,0 +1,35 @@
+# Не-секретные env-specific параметры career2 (prod).
+# Подаётся в values.yaml.gotmpl через gomplate -d base=...
+# Сюда переехало содержимое apps/conf/career2/prod/app.yaml (контракт infra-interface v2).
+replicaCount: 2
+
+app:
+  env: production
+  debug: "false"
+  logChannel: stderr
+  logLevel: error
+  trustedProxies: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+  url: "https://career2.shor10.ru"
+  systemUserEmail: "test@example.com"
+
+queue:
+  replicaCount: 2
+
+ingress:
+  enabled: true
+  host: career2.shor10.ru
+  className: public
+  tls: true
+  tlsSecretName: ""
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    cert-manager.io/cluster-issuer: "lets-encrypt"
+
+# В prod requests/limits сняты (values-prod.local.yaml задавал web/worker/scheduler в null),
+# чтобы поды не упирались в лимиты. Воспроизводим: явные null'ы поверх chart-дефолтов
+# из deploy/helm/values.yaml.
+resources:
+  web: null
+  worker: null
+  scheduler: null
